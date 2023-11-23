@@ -1,0 +1,28 @@
+version: '3.5'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.9-management
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rabbitmq_01
+    hostname: rabbitmq_node_01
+    ports: 
+      - "4369:4369" # (epmd)epmd代表 Erlang端口映射守护进程，erlang发现口
+      - "5671:5671" # AMQP 0-9-1 without and with TLSclient端通信口
+      - "5672:5672" # AMQP 0-9-1 without and with TLSclient端通信口
+      - "15671:15671" # 管理监听端口
+      - "15672:15672" #管理界面ui使用的端口
+      - "25672:25672" # ( Erlang distribution） server间内部通信口
+      # - "15692:15692" # rabbitmq_prometheus
+    restart: "always"
+    # network_mode: "host"
+    volumes:
+      - ../datas/rabbitmq/lib:/var/lib/rabbitmq # 数据文件目录
+      - ./etc:/etc/rabbitmq # 配置文件目录
+      - ../logs/rabbitmq:/var/log/rabbitmq # 日志文件目录
+    environment:
+      - RABBITMQ_DEFAULT_VHOST=etranslate
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=123456

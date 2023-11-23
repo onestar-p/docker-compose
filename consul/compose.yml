@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+    consul:
+        image: consul:1.9.7
+        restart: always
+        container_name: consul
+        command: "agent -server -bootstrap -ui -node=consul-server-leader -client=0.0.0.0 -bind=0.0.0.0"
+        volumes:
+            - ./conf:/consul/config
+            - ../datas/consul/data:/consul/data
+        environment:
+            - CONSUL_BIND_INTERFACE=eth0
+            - 'CONSUL_LOCAL_CONFIG={"connect": {"enabled": true}}'
+        ports:
+            - "8500:8500"

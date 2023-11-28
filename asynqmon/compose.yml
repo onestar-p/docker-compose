@@ -1,0 +1,10 @@
+asynqmon:
+  image: hibiken/asynqmon:latest
+  container_name: asynqmon
+  ports:
+    - 8090:8080
+  command:
+    - '--redis-addr=192.168.15.85:6379'
+    - '--redis-password='
+    - '--redis-db=1'
+  restart: always

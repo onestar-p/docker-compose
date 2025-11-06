@@ -2,8 +2,8 @@ version: '3.8'
 
 services:
   redis:
-    image: redis:7.2-alpine  # 使用 Redis 7.2 Alpine 版本（体积更小）
-    container_name: redis7  # 容器名称
+    image: redis:latest
+    container_name: redis  # 容器名称
     restart: always  # 容器自动重启
     ports:
       - "6379:6379"  # 端口映射：主机端口:容器端口

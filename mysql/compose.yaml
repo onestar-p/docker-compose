@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0  # 使用 MySQL 8.0 官方镜像
+    container_name: mysql8  # 容器名称
+    restart: always  # 容器自动重启
+    ports:
+      - "3306:3306"  # 端口映射：主机端口:容器端口
+    environment:
+      # Root 用户密码（生产环境请务必修改）
+      MYSQL_ROOT_PASSWORD: root123456
+      # 初始化时创建的数据库
+      MYSQL_DATABASE: mydb
+      # 创建的普通用户
+      MYSQL_USER: admin
+      # 普通用户密码
+      MYSQL_PASSWORD: admin123456
+      # 时区设置
+      TZ: Asia/Shanghai
+    volumes:
+      # 挂载数据目录，持久化数据库数据
+      - ../datas/mysql/data:/var/lib/mysql
+      # 挂载配置目录，可以自定义 MySQL 配置
+      - ./config:/etc/mysql/conf.d
+      # 挂载日志目录
+      - ../logs/mysql:/var/log/mysql
+    command:
+      # 设置默认字符集为 utf8mb4
+      - --character-set-server=utf8mb4
+      # 设置默认排序规则
+      - --collation-server=utf8mb4_unicode_ci
+      # 使用原生密码认证插件（兼容性更好）
+      - --default-authentication-plugin=mysql_native_password
+      # 最大连接数
+      - --max_connections=1000
+      # 最大允许的数据包大小
+      - --max_allowed_packet=64M
+    healthcheck:
+      # 健康检查：使用 mysqladmin ping 命令检查 MySQL 是否可用
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123456"]
+      interval: 10s  # 每 10 秒检查一次
+      timeout: 5s  # 超时时间 5 秒
+      retries: 3  # 重试 3 次
+      start_period: 30s  # 启动后 30 秒开始健康检查
+    networks:
+      - mysql-net  # 加入自定义网络
+
+# 自定义网络配置
+networks:
+  mysql-net:
+    driver: bridge  # 使用桥接网络模式
+

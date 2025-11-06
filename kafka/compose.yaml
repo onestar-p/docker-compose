@@ -58,6 +58,10 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      # 开启认证（可选，生产环境建议开启）
+      AUTH_TYPE: "LOGIN_FORM"  # 使用登录表单认证
+      SPRING_SECURITY_USER_NAME: admin  # 用户名
+      SPRING_SECURITY_USER_PASSWORD: admin123456  # 密码（生产环境请改为强密码）
     depends_on:
       kafka:
         condition: service_healthy

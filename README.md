@@ -134,6 +134,7 @@ docker-compose/
 
 每个服务都有详细的配置文件和说明文档，请查看对应目录下的 `README.md`：
 
+- [Kafka 配置说明](kafka/README.md)
 - [MySQL 配置说明](mysql/README.md)
 - [Redis 配置说明](redis/README.md)
 
@@ -147,6 +148,7 @@ docker-compose/
 | MySQL | admin | admin123456 |
 | MongoDB | admin | admin |
 | Redis | - | redis123456 |
+| Kafka UI | admin | admin123456 |
 
 ## 📝 注意事项
 

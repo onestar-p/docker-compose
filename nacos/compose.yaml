@@ -1,0 +1,32 @@
+services:
+  nacos:
+    image: nacos/nacos-server:latest  # Nacos 服务发现和配置中心
+    container_name: nacos  # 容器名称
+    restart: unless-stopped  # 容器自动重启（除非手动停止）
+    environment:
+      - MODE=standalone  # 单机模式
+      - TZ=Asia/Shanghai  # 时区设置
+      - JVM_XMS=256m  # JVM 初始内存
+      - JVM_XMX=512m  # JVM 最大内存
+    volumes:
+      - ../logs/nacos:/home/nacos/logs  # 日志目录
+      - ./init.d/custom.properties:/home/nacos/init.d/custom.properties  # 自定义配置
+      - ../datas/nacos:/home/nacos/data  # 数据持久化
+    ports:
+      - "8848:8848"  # Nacos 主端口
+      - "9848:9848"  # Nacos gRPC 端口（客户端通信）
+      - "9849:9849"  # Nacos gRPC 端口（服务端通信）
+    healthcheck:
+      # 健康检查：检查 Nacos 是否就绪
+      test: ["CMD", "curl", "-f", "http://localhost:8848/nacos/v1/console/health/readiness"]
+      interval: 10s  # 每 10 秒检查一次
+      timeout: 5s  # 超时时间 5 秒
+      retries: 3  # 重试 3 次
+      start_period: 30s  # 启动后 30 秒开始健康检查
+    networks:
+      - nacos-net  # 加入自定义网络
+
+# 自定义网络配置
+networks:
+  nacos-net:
+    driver: bridge  # 使用桥接网络模式

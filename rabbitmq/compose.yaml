@@ -21,7 +21,7 @@ services:
       - ../logs/rabbitmq:/var/log/rabbitmq
     
     environment:
-      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-etranslate}
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-cw-platform-test}
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-rabbitmq123456}
       # 性能优化配置

@@ -1,5 +1,29 @@
 # RabbitMQ Docker Compose 配置
 
+## 🔒 安全验证
+
+### 自动验证（推荐）
+
+```bash
+./verify-security.sh
+```
+
+### 手动验证
+
+```bash
+# 构建镜像
+docker build --no-cache -t rabbitmq-secure:test .
+
+# 使用 Trivy 扫描（推荐）
+trivy image --severity HIGH,CRITICAL rabbitmq-secure:test
+
+# 或使用 Docker Scout
+docker scout cves rabbitmq-secure:test
+
+# 或使用 Grype
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype rabbitmq-secure:test
+```
+
 ## 快速开始
 
 ### 1. 创建环境变量文件
@@ -47,8 +71,9 @@ docker inspect --format='{{.State.Health.Status}}' rabbitmq_01
 
 ### 版本信息
 
-- RabbitMQ: 3.13-management
+- RabbitMQ: 3.13.7-management-alpine
 - Docker Compose: 3.8
+- 基础镜像: Alpine Linux (安全、轻量)
 - 已启用插件：
   - rabbitmq_management（管理界面）
   - rabbitmq_delayed_message_exchange（延迟消息）

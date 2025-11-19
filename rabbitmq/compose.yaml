@@ -23,7 +23,7 @@ services:
     environment:
       - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-etranslate}
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-changeme}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-rabbitmq123456}
       # 性能优化配置
       - RABBITMQ_VM_MEMORY_HIGH_WATERMARK=0.6
       - RABBITMQ_DISK_FREE_LIMIT=2GB

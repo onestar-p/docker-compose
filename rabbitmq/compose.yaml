@@ -24,9 +24,8 @@ services:
       - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-cw_platform_test}
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-rabbitmq123456}
-      # 性能优化配置
-      - RABBITMQ_VM_MEMORY_HIGH_WATERMARK=0.6
-      - RABBITMQ_DISK_FREE_LIMIT=2GB
+      # 配置文件路径已通过 volumes 挂载到 /etc/rabbitmq
+      # 性能优化配置已移至 etc/rabbitmq.conf 文件
     
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]

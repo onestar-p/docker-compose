@@ -32,7 +32,7 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype rabbi
 
 ```bash
 # RabbitMQ 虚拟主机
-RABBITMQ_VHOST=etranslate
+RABBITMQ_VHOST=cw_platform_test
 
 # RabbitMQ 管理员账号
 RABBITMQ_USER=admin
@@ -41,13 +41,22 @@ RABBITMQ_USER=admin
 RABBITMQ_PASS=your_strong_password_here
 ```
 
-### 2. 启动服务
+### 2. 配置文件说明
+
+RabbitMQ 配置已迁移到配置文件方式（推荐）：
+
+- **etc/rabbitmq.conf** - 主配置文件（内存、磁盘、日志等）
+- **etc/enabled_plugins** - 启用的插件列表
+
+配置文件已自动挂载，无需额外操作。如需修改配置，编辑 `etc/rabbitmq.conf` 后重启服务即可。
+
+### 3. 启动服务
 
 ```bash
 docker-compose -f compose.yaml up -d
 ```
 
-### 3. 查看服务状态
+### 4. 查看服务状态
 
 ```bash
 # 查看容器状态
@@ -60,7 +69,7 @@ docker-compose -f compose.yaml logs -f rabbitmq
 docker inspect --format='{{.State.Health.Status}}' rabbitmq_01
 ```
 
-### 4. 访问管理界面
+### 5. 访问管理界面
 
 打开浏览器访问：`http://localhost:15672`
 
@@ -97,8 +106,13 @@ docker inspect --format='{{.State.Health.Status}}' rabbitmq_01
 
 ### 性能配置
 
-- **内存高水位标记**: 60% (RABBITMQ_VM_MEMORY_HIGH_WATERMARK=0.6)
-- **磁盘最小空闲空间**: 2GB (RABBITMQ_DISK_FREE_LIMIT=2GB)
+所有性能配置已迁移到 `etc/rabbitmq.conf` 文件：
+
+- **内存高水位标记**: 60% (vm_memory_high_watermark.relative = 0.6)
+- **磁盘最小空闲空间**: 2GB (disk_free_limit.absolute = 2GB)
+- **心跳超时**: 60秒 (heartbeat = 60)
+- **日志级别**: info (log.console.level = info)
+- 更多配置请查看配置文件
 
 ### 资源限制
 

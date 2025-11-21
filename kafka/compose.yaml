@@ -1,7 +1,10 @@
+version: '3.8'
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.2
     container_name: zookeeper
+    restart: unless-stopped
     ports:
       - "2181:2181"
     environment:
@@ -9,7 +12,9 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
       ZOOKEEPER_HEAP_OPTS: "-Xmx512M -Xms512M"
     volumes:
-      - ../datas/zookeeper:/var/lib/zookeeper/data
+      - ../datas/zookeeper/data:/var/lib/zookeeper/data
+      - ../datas/zookeeper/log:/var/lib/zookeeper/log
+      - ../logs/zookeeper:/var/log/zookeeper
     networks:
       - kafka-net
     healthcheck:
@@ -17,55 +22,101 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.3.2
     container_name: kafka
+    restart: unless-stopped
     depends_on:
       zookeeper:
         condition: service_healthy
     ports:
       - "9092:9092"
+      - "9093:9093"  # 外部访问端口
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
       KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
     volumes:
-      - ../datas/kafka:/var/lib/kafka/data
+      - ../datas/kafka/data:/var/lib/kafka/data
+      - ../logs/kafka:/var/log/kafka
     networks:
       - kafka-net
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-      # 开启认证（可选，生产环境建议开启）
-      AUTH_TYPE: "LOGIN_FORM"  # 使用登录表单认证
-      SPRING_SECURITY_USER_NAME: admin  # 用户名
-      SPRING_SECURITY_USER_PASSWORD: admin123456  # 密码（生产环境请改为强密码）
+      # 认证配置（生产环境建议开启）
+      AUTH_TYPE: "LOGIN_FORM"
+      SPRING_SECURITY_USER_NAME: ${KAFKA_UI_USER:-admin}
+      SPRING_SECURITY_USER_PASSWORD: ${KAFKA_UI_PASS:-admin123456}
+      # 日志级别
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_PROVECTUS: INFO
     depends_on:
       kafka:
         condition: service_healthy
     networks:
       - kafka-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
 networks:
   kafka-net:
     driver: bridge
+    name: kafka_network

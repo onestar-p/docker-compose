@@ -4,7 +4,7 @@
 
 ## 脚本列表
 
-### 1. mq-list.sh - RabbitMQ 队列查看
+### 1. mq-list.sh - RabbitMQ 队列查看 📋
 
 查看 RabbitMQ 的队列信息。
 
@@ -29,7 +29,7 @@
 
 ---
 
-### 2. kafka-list.sh - Kafka 信息查看（简单版）
+### 2. kafka-list.sh - Kafka 信息查看（简单版）📊
 
 快速查看 Kafka 的 topics 和 consumer groups。
 
@@ -54,7 +54,7 @@
 
 ---
 
-### 3. kafka-info.sh - Kafka 信息查看（增强版）
+### 3. kafka-info.sh - Kafka 信息查看（增强版）🔍
 
 功能更强大的 Kafka 管理工具，带彩色输出。
 
@@ -101,6 +101,74 @@
 
 ---
 
+### 4. kafka-create.sh - Kafka Topic 和 Group 创建 ✨
+
+创建和管理 Kafka 的 Topics 和 Consumer Groups。
+
+**使用方法:**
+```bash
+# 创建默认配置的 topic（3 分区，1 副本）
+./kafka-create.sh topic my-topic
+
+# 创建自定义配置的 topic
+./kafka-create.sh topic order-topic -p 5 -r 1
+
+# 创建带额外配置的 topic（设置保留时间为 1 天）
+./kafka-create.sh topic log-topic -p 3 -c retention.ms=86400000
+
+# 创建 consumer group（启动消费者测试）
+./kafka-create.sh group my-topic my-consumer-group
+
+# 删除 topic
+./kafka-create.sh delete-topic old-topic
+
+# 删除 consumer group
+./kafka-create.sh delete-group old-group
+
+# 显示帮助信息
+./kafka-create.sh help
+```
+
+**命令说明:**
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `topic <name> [options]` | 创建 Topic | `./kafka-create.sh topic test -p 5 -r 1` |
+| `group <topic> <group>` | 测试 Consumer Group | `./kafka-create.sh group test my-group` |
+| `delete-topic <name>` | 删除 Topic | `./kafka-create.sh delete-topic test` |
+| `delete-group <name>` | 删除 Consumer Group | `./kafka-create.sh delete-group my-group` |
+| `help` | 显示帮助信息 | `./kafka-create.sh help` |
+
+**Topic 创建参数:**
+
+| 参数 | 说明 | 默认值 | 示例 |
+|------|------|--------|------|
+| `-p, --partitions` | 分区数 | 3 | `-p 5` |
+| `-r, --replication` | 副本因子 | 1 | `-r 1` |
+| `-c, --config` | 额外配置 | 无 | `-c retention.ms=86400000` |
+
+**常用配置项:**
+
+```bash
+# 数据保留时间（毫秒）
+-c retention.ms=86400000  # 1 天
+-c retention.ms=604800000 # 7 天
+
+# 单条消息最大大小（字节）
+-c max.message.bytes=10485760  # 10MB
+
+# 压缩类型
+-c compression.type=gzip
+-c compression.type=snappy
+-c compression.type=lz4
+
+# 清理策略
+-c cleanup.policy=delete  # 删除旧数据
+-c cleanup.policy=compact # 压缩（保留最新值）
+```
+
+---
+
 ## 快速对比
 
 ### RabbitMQ vs Kafka 脚本对比
@@ -131,6 +199,12 @@
 - 故障排查和监控
 - 交互式查询
 
+**kafka-create.sh**:
+- 快速创建 Topics
+- 配置和测试 Consumer Groups
+- 管理 Kafka 资源（创建/删除）
+- 开发环境快速搭建
+
 ---
 
 ## 常见使用场景
@@ -155,14 +229,42 @@
 ./kafka-list.sh my-topic my-consumer-group
 ```
 
-### 场景 3: 查看 Kafka Topic 分区情况
+### 场景 3: 创建 Kafka Topic
+
+```bash
+# 创建用于订单处理的 topic（5 个分区，便于并发处理）
+./kafka-create.sh topic order-events -p 5 -r 1
+
+# 创建日志 topic（数据保留 7 天）
+./kafka-create.sh topic app-logs -p 3 -c retention.ms=604800000
+
+# 创建高吞吐 topic（启用压缩）
+./kafka-create.sh topic metrics -p 10 -c compression.type=lz4
+```
+
+### 场景 4: 查看 Kafka Topic 分区情况
 
 ```bash
 ./kafka-info.sh topic my-topic
 # 会显示每个分区的 Leader、Replicas、ISR 等信息
 ```
 
-### 场景 4: 监控脚本集成
+### 场景 5: 测试 Consumer Group
+
+```bash
+# 创建 topic
+./kafka-create.sh topic test-topic
+
+# 创建并测试 consumer group
+./kafka-create.sh group test-topic my-test-group
+
+# 在另一个终端生产消息测试
+docker exec -it kafka kafka-console-producer \
+  --bootstrap-server localhost:9092 \
+  --topic test-topic
+```
+
+### 场景 6: 监控脚本集成
 
 ```bash
 #!/bin/bash

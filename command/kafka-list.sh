@@ -61,8 +61,17 @@ if [ -n "$GROUPS" ]; then
         MEMBERS=$(echo "$STATE_INFO" | awk '{print $NF}')
         STATE=$(echo "$STATE_INFO" | awk '{print $(NF-1)}')
         
+        # 验证 MEMBERS 是否为有效数字
+        if [[ ! "$MEMBERS" =~ ^[0-9]+$ ]]; then
+            MEMBERS="-"
+            STATE=$(echo "$STATE_INFO" | awk '{print $2}' | head -1)
+            if [ -z "$STATE" ]; then
+                STATE="Unknown"
+            fi
+        fi
+        
         # 根据消费者数量显示不同颜色
-        if [ "$MEMBERS" = "0" ]; then
+        if [ "$MEMBERS" = "0" ] || [ "$MEMBERS" = "-" ]; then
             printf "%-40s \033[1;33m%-10s\033[0m %-15s\n" "$group" "$MEMBERS" "$STATE"
         else
             printf "%-40s \033[0;32m%-10s\033[0m %-15s\n" "$group" "$MEMBERS" "$STATE"
@@ -120,7 +129,11 @@ if [ -n "$GROUPS" ]; then
             --bootstrap-server $BOOTSTRAP_SERVER \
             --group "$group" \
             --state 2>/dev/null | tail -n 1 | awk '{print $NF}')
-        TOTAL_CONSUMERS=$((TOTAL_CONSUMERS + MEMBERS))
+        
+        # 验证是否为有效数字，避免算术运算错误
+        if [[ "$MEMBERS" =~ ^[0-9]+$ ]]; then
+            TOTAL_CONSUMERS=$((TOTAL_CONSUMERS + MEMBERS))
+        fi
     done
 fi
 

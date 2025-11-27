@@ -19,11 +19,22 @@ services:
       - ../datas/rabbitmq/lib:/var/lib/rabbitmq
       - ./etc:/etc/rabbitmq
       - ../logs/rabbitmq:/var/log/rabbitmq
+      - ./init:/docker-entrypoint-initdb.d  # 初始化脚本
     
     environment:
+      # 基础配置
       - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-cw_platform_test}
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-rabbitmq123456}
+      
+      # 重试策略配置（全局默认）
+      - RABBITMQ_AUTO_POLICY=${RABBITMQ_AUTO_POLICY:-true}        # 是否自动应用策略（true/false）
+      - RABBITMQ_MAX_RETRIES=${RABBITMQ_MAX_RETRIES:-3}           # 最大重试次数（代码中使用）
+      - RABBITMQ_MESSAGE_TTL=${RABBITMQ_MESSAGE_TTL:-3600000}     # 消息过期时间 1小时
+      - RABBITMQ_MAX_LENGTH=${RABBITMQ_MAX_LENGTH:-100000}        # 队列最大长度
+      - RABBITMQ_DLX_EXCHANGE=${RABBITMQ_DLX_EXCHANGE:-dlx.exchange}   # 死信交换机
+      - RABBITMQ_DLX_QUEUE=${RABBITMQ_DLX_QUEUE:-dlx.queue}            # 死信队列
+      
       # 配置文件路径已通过 volumes 挂载到 /etc/rabbitmq
       # 性能优化配置已移至 etc/rabbitmq.conf 文件
     

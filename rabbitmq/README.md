@@ -1,244 +1,257 @@
-# RabbitMQ Docker Compose 配置
+# RabbitMQ Docker 配置
 
-## 🔒 安全验证
+## 功能特性
 
-### 自动验证（推荐）
-
-```bash
-./verify-security.sh
-```
-
-### 手动验证
-
-```bash
-# 构建镜像
-docker build --no-cache -t rabbitmq-secure:test .
-
-# 使用 Trivy 扫描（推荐）
-trivy image --severity HIGH,CRITICAL rabbitmq-secure:test
-
-# 或使用 Docker Scout
-docker scout cves rabbitmq-secure:test
-
-# 或使用 Grype
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock anchore/grype rabbitmq-secure:test
-```
+✅ 自动配置全局重试策略  
+✅ 所有队列自动继承重试配置  
+✅ 自动创建死信交换机和死信队列  
+✅ 支持延迟消息插件  
+✅ 健康检查和资源限制  
 
 ## 快速开始
 
-### 1. 创建环境变量文件
+### 1. 配置环境变量（可选）
 
-创建 `.env` 文件并配置以下变量：
+创建 `.env` 文件（或使用默认值）：
 
 ```bash
-# RabbitMQ 虚拟主机
+# 基础配置
 RABBITMQ_VHOST=cw_platform_test
-
-# RabbitMQ 管理员账号
 RABBITMQ_USER=admin
+RABBITMQ_PASS=rabbitmq123456
 
-# RabbitMQ 管理员密码（生产环境请使用强密码）
-RABBITMQ_PASS=your_strong_password_here
+# 重试策略配置
+RABBITMQ_MAX_RETRIES=3              # 最大重试次数
+RABBITMQ_MESSAGE_TTL=3600000        # 消息 TTL: 1小时
+RABBITMQ_MAX_LENGTH=100000          # 队列最大长度
+RABBITMQ_DLX_EXCHANGE=dlx.exchange  # 死信交换机
+RABBITMQ_DLX_QUEUE=dlx.queue        # 死信队列
 ```
 
-### 2. 配置文件说明
-
-RabbitMQ 配置已迁移到配置文件方式（推荐）：
-
-- **etc/rabbitmq.conf** - 主配置文件（内存、磁盘、日志等）
-- **etc/enabled_plugins** - 启用的插件列表
-
-配置文件已自动挂载，无需额外操作。如需修改配置，编辑 `etc/rabbitmq.conf` 后重启服务即可。
-
-### 3. 启动服务
+### 2. 启动服务
 
 ```bash
-docker-compose -f compose.yaml up -d
+# 构建并启动
+docker-compose -f rabbitmq/compose.yaml up -d --build
+
+# 查看日志（确认初始化成功）
+docker logs rabbitmq_01 | grep "初始化"
 ```
 
-### 4. 查看服务状态
+### 3. 验证配置
 
 ```bash
-# 查看容器状态
-docker-compose -f compose.yaml ps
+# 查看策略
+docker exec rabbitmq_01 rabbitmqctl list_policies -p cw_platform_test
 
-# 查看容器日志
-docker-compose -f compose.yaml logs -f rabbitmq
+# 查看死信队列
+docker exec rabbitmq_01 rabbitmqctl list_queues -p cw_platform_test | grep dlx
 
-# 检查健康状态
-docker inspect --format='{{.State.Health.Status}}' rabbitmq_01
+# 或使用脚本
+./command/mq-list.sh detail
 ```
 
-### 5. 访问管理界面
+## 自动配置说明
 
-打开浏览器访问：`http://localhost:15672`
+容器启动后，会自动执行以下操作：
 
-- 默认用户名：在 `.env` 文件中配置的 `RABBITMQ_USER`
-- 默认密码：在 `.env` 文件中配置的 `RABBITMQ_PASS`
+1. ✅ 创建 VHost（如果不存在）
+2. ✅ 创建死信交换机 (`dlx.exchange`)
+3. ✅ 创建死信队列 (`dlx.queue`)
+4. ✅ 绑定死信队列到死信交换机
+5. ✅ 创建全局策略，应用到**所有队列**
 
-## 配置说明
+### 策略内容
 
-### 版本信息
+所有队列（新建和现有）会自动应用：
 
-- RabbitMQ: 3.13.7-management-alpine
-- Docker Compose: 3.8
-- 基础镜像: Alpine Linux (安全、轻量)
-- 已启用插件：
-  - rabbitmq_management（管理界面）
-  - rabbitmq_delayed_message_exchange（延迟消息）
+```json
+{
+  "dead-letter-exchange": "dlx.exchange",
+  "message-ttl": 3600000,
+  "max-length": 100000
+}
+```
 
-### 端口映射
+## 使用方法
 
-| 容器端口 | 主机端口 | 说明 |
-|---------|---------|------|
-| 4369 | 4369 | Erlang 端口映射守护进程 |
-| 5671 | 5671 | AMQP over TLS |
-| 5672 | 5672 | AMQP 标准端口 |
-| 15671 | 15671 | 管理界面 HTTPS |
-| 15672 | 15672 | 管理界面 HTTP |
-| 25672 | 25672 | Erlang 节点间通信 |
+### 消费者代码实现重试
 
-### 数据持久化
+```go
+package main
 
-- **数据文件**: `../datas/rabbitmq/lib` -> `/var/lib/rabbitmq`
-- **配置文件**: `./etc` -> `/etc/rabbitmq`
-- **日志文件**: `../logs/rabbitmq` -> `/var/log/rabbitmq`
+import (
+    "github.com/streadway/amqp"
+    "log"
+)
 
-### 性能配置
+const MAX_RETRIES = 3  // 与环境变量 RABBITMQ_MAX_RETRIES 保持一致
 
-所有性能配置已迁移到 `etc/rabbitmq.conf` 文件：
+func handleMessage(delivery amqp.Delivery) {
+    // 获取重试次数
+    retryCount := 0
+    if xDeath, ok := delivery.Headers["x-death"].([]interface{}); ok {
+        retryCount = len(xDeath)
+    }
+    
+    // 处理消息
+    if err := processMessage(delivery.Body); err != nil {
+        if retryCount < MAX_RETRIES {
+            log.Printf("处理失败，将重试 (%d/%d)", retryCount+1, MAX_RETRIES)
+            delivery.Nack(false, false)  // 触发 DLX
+        } else {
+            log.Printf("超过最大重试次数，进入死信队列")
+            delivery.Nack(false, false)
+        }
+    } else {
+        delivery.Ack(false)
+    }
+}
+```
 
-- **内存高水位标记**: 60% (vm_memory_high_watermark.relative = 0.6)
-- **磁盘最小空闲空间**: 2GB (disk_free_limit.absolute = 2GB)
-- **心跳超时**: 60秒 (heartbeat = 60)
-- **日志级别**: info (log.console.level = info)
-- 更多配置请查看配置文件
+## 配置参数说明
 
-### 资源限制
+| 环境变量 | 默认值 | 说明 |
+|---------|--------|------|
+| RABBITMQ_VHOST | cw_platform_test | VHost 名称 |
+| RABBITMQ_USER | admin | 管理员用户名 |
+| RABBITMQ_PASS | rabbitmq123456 | 管理员密码 |
+| RABBITMQ_MAX_RETRIES | 3 | 最大重试次数（代码中使用） |
+| RABBITMQ_MESSAGE_TTL | 3600000 | 消息过期时间（毫秒） |
+| RABBITMQ_MAX_LENGTH | 100000 | 队列最大长度 |
+| RABBITMQ_DLX_EXCHANGE | dlx.exchange | 死信交换机名称 |
+| RABBITMQ_DLX_QUEUE | dlx.queue | 死信队列名称 |
 
-- **CPU 限制**: 2 核
-- **内存限制**: 2GB
-- **CPU 预留**: 0.5 核
-- **内存预留**: 512MB
+## 修改配置
 
-> 注意：可根据实际服务器资源调整这些值
-
-### 健康检查
-
-- **检查间隔**: 30秒
-- **超时时间**: 10秒
-- **重试次数**: 3次
-- **启动等待**: 40秒
-
-## 常用命令
-
-### 重启服务
+### 方式 1：通过环境变量（推荐）
 
 ```bash
-docker-compose -f compose.yaml restart
+# 创建 .env 文件
+cat > rabbitmq/.env <<EOF
+RABBITMQ_MAX_RETRIES=5
+RABBITMQ_MESSAGE_TTL=7200000
+RABBITMQ_MAX_LENGTH=200000
+EOF
+
+# 重新构建并启动
+docker-compose -f rabbitmq/compose.yaml up -d --build
 ```
 
-### 停止服务
+### 方式 2：直接修改 compose.yaml
 
-```bash
-docker-compose -f compose.yaml stop
-```
-
-### 删除服务（保留数据）
-
-```bash
-docker-compose -f compose.yaml down
-```
-
-### 删除服务（包括数据卷）
-
-```bash
-docker-compose -f compose.yaml down -v
-```
-
-### 重新构建镜像
-
-```bash
-docker-compose -f compose.yaml build --no-cache
-docker-compose -f compose.yaml up -d
-```
-
-### 查看 RabbitMQ 状态
-
-```bash
-# 进入容器
-docker exec -it rabbitmq_01 bash
-
-# 查看集群状态
-rabbitmq-diagnostics cluster_status
-
-# 查看节点状态
-rabbitmqctl status
-
-# 查看队列列表
-rabbitmqctl list_queues
-
-# 查看交换机列表
-rabbitmqctl list_exchanges
-
-# 查看绑定关系
-rabbitmqctl list_bindings
-```
-
-## 故障排查
-
-### 1. 容器无法启动
-
-检查数据目录权限：
-
-```bash
-# 确保目录存在
-mkdir -p ../datas/rabbitmq/lib ../logs/rabbitmq
-
-# 如果有权限问题，可以尝试
-sudo chown -R 999:999 ../datas/rabbitmq/lib ../logs/rabbitmq
-```
-
-### 2. 无法访问管理界面
-
-- 检查容器是否正常运行：`docker ps`
-- 检查端口是否被占用：`netstat -tuln | grep 15672`
-- 查看容器日志：`docker logs rabbitmq_01`
-
-### 3. 内存不足警告
-
-调整 `compose.yaml` 中的内存限制或调整内存高水位标记：
+修改 `compose.yaml` 中的默认值：
 
 ```yaml
 environment:
-  - RABBITMQ_VM_MEMORY_HIGH_WATERMARK=0.4  # 降低到40%
+  - RABBITMQ_MAX_RETRIES=${RABBITMQ_MAX_RETRIES:-5}      # 改为 5
+  - RABBITMQ_MESSAGE_TTL=${RABBITMQ_MESSAGE_TTL:-7200000} # 改为 2小时
 ```
 
-## 安全建议
+### 方式 3：运行时配置
 
-1. **修改默认密码**：请务必在 `.env` 文件中设置强密码
-2. **限制访问**：生产环境建议配置防火墙规则，仅允许必要的 IP 访问
-3. **使用 TLS**：生产环境建议启用 TLS 加密通信
-4. **定期备份**：定期备份 `datas/rabbitmq/lib` 目录
+容器启动后，手动修改策略：
 
-## 生产环境增强
-
-### 启用 Prometheus 监控
-
-取消 `compose.yaml` 中的注释：
-
-```yaml
-ports:
-  - "15692:15692" # Prometheus metrics
+```bash
+docker exec rabbitmq_01 rabbitmqctl set_policy \
+  -p cw_platform_test \
+  "auto-retry-policy" \
+  ".*" \
+  '{"dead-letter-exchange":"dlx.exchange","message-ttl":7200000}' \
+  --priority 1 \
+  --apply-to queues
 ```
 
-### 配置集群
+## 管理工具
 
-如需配置集群，请参考 RabbitMQ 官方文档：
-https://www.rabbitmq.com/clustering.html
+### Web 管理界面
 
-## 相关链接
+访问：http://localhost:15672  
+用户名：admin  
+密码：rabbitmq123456
 
-- [RabbitMQ 官方文档](https://www.rabbitmq.com/documentation.html)
-- [RabbitMQ 管理插件](https://www.rabbitmq.com/management.html)
-- [延迟消息插件](https://github.com/rabbitmq/rabbitmq-delayed-message-exchange)
+### 命令行工具
+
+```bash
+# 查看队列详情（含重试配置）
+./command/mq-list.sh detail
+
+# 查看策略
+./command/mq-policy.sh list
+
+# 查看死信队列
+./command/mq-list.sh | grep dlx
+
+# 查看统计信息
+./command/mq-list.sh stats
+```
+
+## 重试机制工作原理
+
+```
+消息 ──> 业务队列 ──处理失败──> Nack(requeue=false)
+                                   │
+                                   ↓
+                              死信交换机(DLX)
+                                   │
+                                   ↓
+              ┌────────────────────┴─────────────────┐
+              │                                      │
+         重试次数 < 3                            重试次数 >= 3
+              │                                      │
+              ↓                                      ↓
+        重新进入业务队列                         留在死信队列
+        (x-death 计数+1)                         (人工处理)
+```
+
+## 常见问题
+
+### Q: 如何查看当前策略是否生效？
+
+```bash
+./command/mq-list.sh detail
+```
+
+### Q: 如何处理死信队列中的消息？
+
+1. 查看死信队列
+2. 分析失败原因
+3. 修复问题后，手动重新发送或删除
+
+### Q: 能否针对特定队列设置不同的重试次数？
+
+可以，创建更高优先级的策略：
+
+```bash
+docker exec rabbitmq_01 rabbitmqctl set_policy \
+  -p cw_platform_test \
+  "special-queue-policy" \
+  "^special\\..*" \
+  '{"dead-letter-exchange":"dlx.exchange","message-ttl":1800000}' \
+  --priority 10 \
+  --apply-to queues
+```
+
+### Q: 修改配置后是否影响现有队列？
+
+是的，策略会立即应用到所有匹配的队列（包括现有队列）。
+
+## 文件结构
+
+```
+rabbitmq/
+├── compose.yaml              # Docker Compose 配置
+├── Dockerfile                # Docker 镜像构建
+├── README.md                 # 本文件
+├── .env.example              # 环境变量示例
+├── init/
+│   └── init-policy.sh        # 自动初始化脚本
+└── etc/
+    └── rabbitmq.conf         # RabbitMQ 配置文件
+```
+
+## 参考资料
+
+- [RabbitMQ 死信交换机](https://www.rabbitmq.com/dlx.html)
+- [RabbitMQ Policies](https://www.rabbitmq.com/parameters.html#policies)
+- [消息 TTL](https://www.rabbitmq.com/ttl.html)

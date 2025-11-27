@@ -9,7 +9,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # RabbitMQ 容器名称
-RABBITMQ_CONTAINER="rabbitmq_01"
+RABBITMQ_CONTAINER="rabbitmq"
 DEFAULT_VHOST="cw_platform_test"
 
 # 检查容器是否运行

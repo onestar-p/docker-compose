@@ -1,75 +1,25 @@
+version: '3'
 services:
   rabbitmq:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: rabbitmq_01
-    hostname: rabbitmq_node_01
-    ports: 
-      - "4369:4369"   # epmd - Erlang 端口映射守护进程
-      - "5671:5671"   # AMQP over TLS
-      - "5672:5672"   # AMQP 端口
-      - "15671:15671" # 管理界面 HTTPS
-      - "15672:15672" # 管理界面 HTTP
-      - "25672:25672" # Erlang distribution - 节点间通信
-      # - "15692:15692" # Prometheus metrics
-    restart: unless-stopped
-    
+    image: rabbitmq:3.13.7-management
+    container_name: rabbitmq
+    ports:
+      - "4369:4369"       # Erlang端口
+      - "5671:5671"       # AMQP 0-9-1 with TLS
+      - "5672:5672"       # AMQP 0-9-1 without TLS
+      - "15671:15671"     # 管理端口（TLS）
+      - "15672:15672"     # 管理界面
+      - "25672:25672"     # Erlang server间的内部通信
+    restart: "always"
     volumes:
-      - ../datas/rabbitmq/lib:/var/lib/rabbitmq
-      - ./etc:/etc/rabbitmq
-      - ../logs/rabbitmq:/var/log/rabbitmq
-      - ./init:/docker-entrypoint-initdb.d  # 初始化脚本
-    
+      - ../datas/rabbitmq:/var/lib/rabbitmq  # 数据目录
+      - ./etc/:/etc/rabbitmq       # 配置文件目录
+      - ../logs/rabbitmq/:/var/log/rabbitmq   # 日志文件目录
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"   # 日志最大尺寸
+        max-file: "10"     # 最大日志文件数
     environment:
-      # 基础配置
-      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-cw_platform_test}
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-rabbitmq123456}
-      
-      # 重试策略配置（全局默认）
-      - RABBITMQ_AUTO_POLICY=${RABBITMQ_AUTO_POLICY:-true}        # 是否自动应用策略（true/false）
-      - RABBITMQ_MAX_RETRIES=${RABBITMQ_MAX_RETRIES:-3}           # 最大重试次数（代码中使用）
-      - RABBITMQ_MESSAGE_TTL=${RABBITMQ_MESSAGE_TTL:-3600000}     # 消息过期时间 1小时
-      - RABBITMQ_MAX_LENGTH=${RABBITMQ_MAX_LENGTH:-100000}        # 队列最大长度
-      - RABBITMQ_DLX_EXCHANGE=${RABBITMQ_DLX_EXCHANGE:-dlx.exchange}   # 死信交换机
-      - RABBITMQ_DLX_QUEUE=${RABBITMQ_DLX_QUEUE:-dlx.queue}            # 死信队列
-      
-      # 配置文件路径已通过 volumes 挂载到 /etc/rabbitmq
-      # 性能优化配置已移至 etc/rabbitmq.conf 文件
-    
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    
-    # 资源限制（根据实际需求调整）
-    # 开发环境配置 - 如需更多资源请取消注释下方配置
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'      # 最多使用 1 核 CPU
-          memory: 1G       # 最多使用 1GB 内存
-        reservations:
-          cpus: '0.25'     # 保证 0.25 核
-          memory: 256M     # 保证 256MB
-    
-    # 生产环境配置（取消下方注释并注释掉上方配置）
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '2.0'
-    #       memory: 2G
-    #     reservations:
-    #       cpus: '0.5'
-    #       memory: 512M
-    
-    networks:
-      - rabbitmq-network
-
-networks:
-  rabbitmq-network:
-    driver: bridge
-    name: rabbitmq_network
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=rabbitmq123456

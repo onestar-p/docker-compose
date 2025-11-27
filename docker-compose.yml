@@ -1,0 +1,103 @@
+# Docker Compose 主配置文件
+# 使用方法：
+#   docker-compose up -d --build           # 启动所有服务
+#   docker-compose up -d rabbitmq          # 只启动 RabbitMQ
+#   docker-compose up -d kafka zookeeper   # 只启动 Kafka 相关服务
+
+services:
+  # ========================================
+  # RabbitMQ 服务
+  # ========================================
+  rabbitmq:
+    build:
+      context: ./rabbitmq
+      dockerfile: Dockerfile
+    container_name: rabbitmq_01
+    hostname: rabbitmq_node_01
+    ports: 
+      - "4369:4369"
+      - "5671:5671"
+      - "5672:5672"
+      - "15671:15671"
+      - "15672:15672"
+      - "25672:25672"
+    restart: unless-stopped
+    volumes:
+      - ./datas/rabbitmq/lib:/var/lib/rabbitmq
+      - ./rabbitmq/etc:/etc/rabbitmq
+      - ./logs/rabbitmq:/var/log/rabbitmq
+      - ./rabbitmq/init:/docker-entrypoint-initdb.d
+    environment:
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST:-cw_platform_test}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-rabbitmq123456}
+      - RABBITMQ_AUTO_POLICY=${RABBITMQ_AUTO_POLICY:-true}
+      - RABBITMQ_MAX_RETRIES=${RABBITMQ_MAX_RETRIES:-3}
+      - RABBITMQ_MESSAGE_TTL=${RABBITMQ_MESSAGE_TTL:-3600000}
+      - RABBITMQ_MAX_LENGTH=${RABBITMQ_MAX_LENGTH:-100000}
+      - RABBITMQ_DLX_EXCHANGE=${RABBITMQ_DLX_EXCHANGE:-dlx.exchange}
+      - RABBITMQ_DLX_QUEUE=${RABBITMQ_DLX_QUEUE:-dlx.queue}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - app-network
+
+  # ========================================
+  # Kafka 服务（可选，取消注释启用）
+  # ========================================
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.3.2
+  #   container_name: zookeeper
+  #   restart: unless-stopped
+  #   ports:
+  #     - "2181:2181"
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #     ZOOKEEPER_HEAP_OPTS: "-Xmx512M -Xms512M"
+  #   volumes:
+  #     - ./datas/zookeeper/data:/var/lib/zookeeper/data
+  #     - ./datas/zookeeper/log:/var/lib/zookeeper/log
+  #     - ./logs/zookeeper:/var/log/zookeeper
+  #   networks:
+  #     - app-network
+
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.3.2
+  #   container_name: kafka
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "9092:9092"
+  #     - "9093:9093"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://${KAFKA_EXTERNAL_HOST:-localhost}:9093
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  #     KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:9093
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  #   volumes:
+  #     - ./datas/kafka/data:/var/lib/kafka/data
+  #     - ./logs/kafka:/var/log/kafka
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
+    name: docker_compose_network
+

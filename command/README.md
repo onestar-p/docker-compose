@@ -4,7 +4,47 @@
 
 ## 脚本列表
 
-### 1. mq-list.sh - RabbitMQ 队列查看 📋
+### 1. mq-vhost.sh - RabbitMQ VHost 管理 🏠
+
+创建、删除和管理 RabbitMQ 的 VHost 及权限。
+
+**使用方法:**
+```bash
+# 查看所有 VHost
+./mq-vhost.sh list
+
+# 创建 VHost（使用默认用户 admin）
+./mq-vhost.sh create my_vhost
+
+# 创建 VHost 并授予指定用户权限
+./mq-vhost.sh create my_vhost myuser
+
+# 删除 VHost
+./mq-vhost.sh delete my_vhost
+
+# 查看 VHost 权限
+./mq-vhost.sh permissions my_vhost
+
+# 授予用户权限
+./mq-vhost.sh grant my_vhost newuser
+
+# 撤销用户权限
+./mq-vhost.sh revoke my_vhost olduser
+
+# 查看所有用户
+./mq-vhost.sh users
+```
+
+**功能特性:**
+- 创建 VHost 并自动配置权限
+- 支持创建新用户
+- 多种权限模式（完全/只读/只写/自定义）
+- 安全删除确认机制
+- 详细的统计信息显示
+
+---
+
+### 2. mq-list.sh - RabbitMQ 队列查看 📋
 
 查看 RabbitMQ 的队列信息。
 
@@ -29,7 +69,40 @@
 
 ---
 
-### 2. kafka-list.sh - Kafka 信息查看（简单版）📊
+### 3. mq-policy.sh - RabbitMQ 策略配置 📜
+
+配置 RabbitMQ 的全局策略，包括重试机制、死信队列等。
+
+**使用方法:**
+```bash
+# 配置完整重试策略（推荐）
+./mq-policy.sh setup
+
+# 在指定 vhost 配置策略
+./mq-policy.sh setup my_vhost
+
+# 配置基础策略（简化版）
+./mq-policy.sh basic
+
+# 查看当前策略
+./mq-policy.sh list
+
+# 删除策略
+./mq-policy.sh delete
+
+# 自定义策略配置
+./mq-policy.sh custom
+```
+
+**功能特性:**
+- 自动创建死信交换机和队列
+- 配置消息 TTL 和重试延迟
+- 支持自定义策略参数
+- 提供 Go 消费者示例代码
+
+---
+
+### 4. kafka-list.sh - Kafka 信息查看（简单版）📊
 
 快速查看 Kafka 的 topics 和 consumer groups。
 
@@ -54,7 +127,7 @@
 
 ---
 
-### 3. kafka-info.sh - Kafka 信息查看（增强版）🔍
+### 5. kafka-info.sh - Kafka 信息查看（增强版）🔍
 
 功能更强大的 Kafka 管理工具，带彩色输出。
 
@@ -101,7 +174,7 @@
 
 ---
 
-### 4. kafka-create.sh - Kafka Topic 和 Group 创建 ✨
+### 6. kafka-create.sh - Kafka Topic 和 Group 创建 ✨
 
 创建和管理 Kafka 的 Topics 和 Consumer Groups。
 
@@ -175,19 +248,32 @@
 
 | 功能 | RabbitMQ | Kafka (简单) | Kafka (增强) |
 |------|----------|-------------|-------------|
+| VHost/命名空间管理 | ✅ | ❌ | ❌ |
+| 权限管理 | ✅ | ❌ | ❌ |
+| 策略配置 | ✅ | ❌ | ❌ |
 | 列出队列/Topics | ✅ | ✅ | ✅ |
 | 查看详情 | ✅ | ✅ | ✅ |
 | 查看消费组 | ❌ | ✅ | ✅ |
 | 消费延迟 | ❌ | ❌ | ✅ |
 | Broker 信息 | ❌ | ❌ | ✅ |
-| 彩色输出 | ❌ | ❌ | ✅ |
-| 子命令模式 | ❌ | ❌ | ✅ |
+| 彩色输出 | ✅ | ❌ | ✅ |
+| 子命令模式 | ✅ | ❌ | ✅ |
 
 ### 推荐使用场景
+
+**mq-vhost.sh**:
+- 创建和管理 RabbitMQ VHost
+- 配置用户权限
+- 多租户环境管理
 
 **mq-list.sh**:
 - 快速查看 RabbitMQ 队列状态
 - 监控特定 vhost 的队列
+
+**mq-policy.sh**:
+- 配置全局重试策略
+- 设置死信队列
+- 消息持久化和过期策略
 
 **kafka-list.sh**:
 - 快速查看 Kafka 概览
@@ -209,7 +295,24 @@
 
 ## 常见使用场景
 
-### 场景 1: 检查 RabbitMQ 队列堆积
+### 场景 1: 创建 RabbitMQ VHost 和用户
+
+```bash
+# 步骤 1: 创建 VHost
+./mq-vhost.sh create production_vhost
+
+# 步骤 2: 创建新用户并授权
+./mq-vhost.sh create production_vhost prod_user
+
+# 步骤 3: 配置重试策略
+./mq-policy.sh setup production_vhost
+
+# 步骤 4: 查看配置结果
+./mq-vhost.sh permissions production_vhost
+./mq-list.sh production_vhost
+```
+
+### 场景 2: 检查 RabbitMQ 队列堆积
 
 ```bash
 # 查看生产环境队列
@@ -219,7 +322,7 @@
 # 关注 messages_ready 列
 ```
 
-### 场景 2: 检查 Kafka 消费延迟
+### 场景 3: 检查 Kafka 消费延迟
 
 ```bash
 # 方法 1: 使用增强版
@@ -229,7 +332,7 @@
 ./kafka-list.sh my-topic my-consumer-group
 ```
 
-### 场景 3: 创建 Kafka Topic
+### 场景 4: 创建 Kafka Topic
 
 ```bash
 # 创建用于订单处理的 topic（5 个分区，便于并发处理）
@@ -242,14 +345,14 @@
 ./kafka-create.sh topic metrics -p 10 -c compression.type=lz4
 ```
 
-### 场景 4: 查看 Kafka Topic 分区情况
+### 场景 5: 查看 Kafka Topic 分区情况
 
 ```bash
 ./kafka-info.sh topic my-topic
 # 会显示每个分区的 Leader、Replicas、ISR 等信息
 ```
 
-### 场景 5: 测试 Consumer Group
+### 场景 6: 测试 Consumer Group
 
 ```bash
 # 创建 topic
@@ -264,7 +367,7 @@ docker exec -it kafka kafka-console-producer \
   --topic test-topic
 ```
 
-### 场景 6: 监控脚本集成
+### 场景 7: 监控脚本集成
 
 ```bash
 #!/bin/bash

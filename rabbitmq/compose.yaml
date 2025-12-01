@@ -21,5 +21,5 @@ services:
         max-size: "100m"   # 日志最大尺寸
         max-file: "10"     # 最大日志文件数
     environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=rabbitmq123456
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-rabbitmq123456}

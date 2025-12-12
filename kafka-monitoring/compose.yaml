@@ -5,7 +5,7 @@ services:
     image: danielqsj/kafka-exporter:latest
     container_name: kafka-exporter
     environment:
-      KAFKA_SERVER: ${KAFKA_SERVER}
+      KAFKA_SERVER: ${BOOTSTRAP_SERVER}
       KAFKA_VERSION: "2.8.0"
       # 如果 MSK 使用 IAM/SASL，添加以下参数：
       # KAFKA_AUTH_METHOD: "IAM"

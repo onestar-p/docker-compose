@@ -5,7 +5,8 @@ services:
     image: danielqsj/kafka-exporter:latest
     container_name: kafka-exporter
     command:
-      - '--kafka.server=${BOOTSTRAP_SERVERS}'
+      - '--kafka.server=${KAFKA_BROKER_1}'
+      - '--kafka.server=${KAFKA_BROKER_2}'
       # 如果 MSK 使用 SASL，添加以下参数：
       # - '--sasl.enabled'
       # - '--sasl.mechanism=SCRAM-SHA-512'

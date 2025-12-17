@@ -9,9 +9,9 @@
 
 
 upstream backend74 {
-   server 192.168.15.157:9001;
+   server 192.168.x.x:9001;
 }
 
-upstream etrans_go {
-   server 192.168.15.157:10010;
+upstream your_upstream {
+   server 192.168.x.x:10010;
 }

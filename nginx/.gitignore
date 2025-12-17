@@ -1,0 +1,8 @@
+# 忽略实际配置文件，只保留 .example 模板
+nginx.conf
+conf.d/upstream.conf
+# 站点配置文件（从 your-domain.conf.example 复制并重命名）
+conf.d/*.conf
+!conf.d/default.conf
+# 如果有其他站点配置，也添加在这里
+# conf.d/*.conf

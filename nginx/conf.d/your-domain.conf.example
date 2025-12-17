@@ -1,7 +1,7 @@
 server {
     listen          80; 
-    server_name     intranet.etranslate.io;
-    root /wwwroot/etranslate-service/public;
+    server_name     your-domain.com;
+    root /wwwroot/your-project/public;
 
     include  /etc/nginx/conf.d/log/access_log.conf;
 
@@ -23,6 +23,7 @@ server {
         return 204;
     }
 
+    # API 代理示例（可选，根据需要修改或删除）
     location ~ \/v1/ {
         if ($request_method = 'OPTIONS') {
             return 204;
@@ -39,8 +40,11 @@ server {
         proxy_set_header Server-Name $server_name;
         proxy_set_header Server-Addr $server_addr;
         proxy_set_header Server-Port $server_port;
-        proxy_pass http://etrans_go;
+        proxy_pass http://your_upstream;
     }
+
+    # PHP 处理（根据 PHP 版本选择：7-2.conf / 7-4.conf / 8-1.conf）
     include /etc/nginx/conf.d/location_php/7-4.conf;
-    error_log  /var/log/nginx/etranslate.io.log  error;
+
+    error_log  /var/log/nginx/your-domain.log  error;
 }

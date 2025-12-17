@@ -1,0 +1,19 @@
+services:
+    php74:
+      build:
+          context: .
+          dockerfile: Dockerfile
+      image: php:7.4-fpm-custom
+      restart: always
+      # privileged: true  # 生产环境不建议使用
+      container_name: compose-php-7-4
+      working_dir: /wwwroot
+      ports:
+          - "9001:9000"
+      volumes:
+          - ./php.ini:/usr/local/etc/php/php.ini
+          - ../logs/php74:/usr/local/var/log
+          - ./php-fpm.d:/usr/local/etc/php-fpm.d
+          - ../wwwroot:/wwwroot
+          - /usr/local/var/www:/usr/share/nginx/html
+          - /etc/localtime:/etc/localtime:ro

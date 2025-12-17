@@ -3,7 +3,7 @@ services:
       build:
           context: .
           dockerfile: Dockerfile
-      image: php:7.4-fpm-custom
+      image: php:7.4-fpm-alpine-custom
       restart: always
       # privileged: true  # 生产环境不建议使用
       container_name: compose-php-7-4

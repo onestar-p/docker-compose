@@ -1,9 +1,11 @@
-FROM php:7.4-fpm
+FROM php:7.4-fpm-alpine
 
+# Alpine 版本更小、漏洞更少
+# 注意：PHP 7.4 已于 2022年11月 EOL，建议尽快升级到 PHP 8.x
 
 RUN set -x \
-    && apt-get update \
-    && apt-get install -y unixodbc-dev zlib1g-dev libzip-dev wget\
+    && apk update \
+    && apk add --no-cache unixodbc-dev zlib-dev libzip-dev wget \
     && docker-php-source extract \
     # 安装扩展
     && docker-php-ext-install bcmath pdo pdo_mysql zip pcntl \
@@ -16,7 +18,7 @@ RUN set -x \
     && php -r "copy('https://install.phpcomposer.com/installer', 'composer-setup.php');" \
     && php composer-setup.php && php -r "unlink('composer-setup.php');" \
     && mv composer.phar /usr/local/bin/composer \
-    && composer config -g repo.packagist composer https://packagist.phpcomposer.com \
-    # 删除`/usr/src/php/ext`目录
+    && composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/ \
+    # 清理
     && docker-php-source delete \
-    && rm -rf /tmp/*
+    && rm -rf /tmp/* /var/cache/apk/*

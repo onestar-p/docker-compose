@@ -8,7 +8,6 @@ services:
         working_dir: /wwwroot
         ports:
             - "80:80"
-            - "8080:8080"
             - "443:443"
         volumes:
             - ./conf.d:/etc/nginx/conf.d
